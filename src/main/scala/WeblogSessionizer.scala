@@ -1,17 +1,12 @@
-
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import java.text.SimpleDateFormat
-import scala.collection.mutable.LinkedHashMap
-import org.apache.spark.rdd.RDD
 import java.nio.file.{Paths, Files}
 import scala.collection.mutable.ListBuffer
 
 object WebLog_Session {
   
 private val sessionInterval = 900000L //setting the session interval for 15 mins = 900000 ms
-private val ipAndTimeMap = new scala.collection.mutable.HashMap[String, Long]()
-
 
  def main(args: Array[String]):Unit = {
   if(args.size == 0) {
@@ -33,7 +28,7 @@ private val ipAndTimeMap = new scala.collection.mutable.HashMap[String, Long]()
    * taking only two fields clientIp and timestamp (in milliseconds)*/
   
   val ipTimestampRDD = textFile.map { lines => 
-    	val line = lines.split(" ")
+    val line = lines.split(" ")
     val timestamp = line(0)
     val clientIp = line(2)
     	(clientIp.substring(0, clientIp.indexOf(":")), new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -42,31 +37,30 @@ private val ipAndTimeMap = new scala.collection.mutable.HashMap[String, Long]()
  
   /* sorting and grouping the RDD on timestamp and clientIP*/
   
-  val sortAndgroupedRDD= ipTimestampRDD.sortBy(_._2).groupByKey
-	
+  //val sortAndgroupedRDD= ipTimestampRDD.sortBy(_._2).groupByKey
+	val sortAndgroupedRDD= ipTimestampRDD.sortBy(_._2).groupByKey
   
   /*calling the method getSessionHitsAndTime on each row of the rdd
    * the method returns List[(String,Long)] i.e list of maps 
    * The returned RDD of List is flattened to RDD of (Strig,Long)
    */
-		var resultRDD = sortAndgroupedRDD.map(x=> 
-		  getSessionHitsAndTime(x._1,x._2))
-		  .flatMap(x=>x.toList)
+  val resultRDD = sortAndgroupedRDD.map(x=>
+    getSessionHitsAndTime(x._1,x._2))
+    .flatMap(x=>x.toList)
 
 	 //persisting the RDD as certain operations will be performed
-		resultRDD.persist()
+  resultRDD.persist()
 
-		
-	//Tasks
+  //Tasks
 	//Determine the average session time
-	val noOfSessions = resultRDD.count
+  val noOfSessions = resultRDD.count
   val totalSessionTime = resultRDD.values.sum()
-	val avgSessionTime=totalSessionTime / (noOfSessions *60 *1000.0)
+  val avgSessionTime=totalSessionTime / (noOfSessions *60 *1000.0)
 	
-	/*Determine unique URL visits per session. 
-	 * To clarify, count a hit to a unique URL only once per session.
-	 */
-	val noOfUniqueVisits= resultRDD.filter(x=>x._2==0L).count()
+  /*Determine unique URL visits per session.
+   * To clarify, count a hit to a unique URL only once per session.
+   */
+  val noOfUniqueVisits= resultRDD.filter(x=>x._2==0L).count()
 	
   //Find the most engaged users, ie the IPs with the longest session times
   val mostEngagedUsers= resultRDD.sortBy(x=>x._2, false, 4).take(10)
@@ -75,9 +69,9 @@ private val ipAndTimeMap = new scala.collection.mutable.HashMap[String, Long]()
   println(f"The average session time(minutes) = $avgSessionTime%2.2f")
   println(s"The no Of Unique visits = $noOfUniqueVisits")
   println("The most engaged users : " )
-   mostEngagedUsers.foreach(x=> println(x))
+  mostEngagedUsers.foreach(x=> println(x))
   resultRDD.unpersist()
-	sparkContext.stop()
+  sparkContext.stop()
   }
 
 
@@ -92,7 +86,7 @@ private val ipAndTimeMap = new scala.collection.mutable.HashMap[String, Long]()
  */
   def getSessionHitsAndTime(clientIp:String,timestampLst: Iterable [Long])  = {
   
-    var timestampList = (timestampLst.toBuffer += Long.MaxValue) 
+   var timestampList = (timestampLst.toBuffer += Long.MaxValue) 
    var listOfMap= new ListBuffer[(String,Long)]
     if (timestampList.isEmpty) {
     }
