@@ -1,4 +1,6 @@
 # WeblogChallenge
+The Maini.scala file is 
+src/main/scala/WeblogSessionizer.scala
 
 To run
 
